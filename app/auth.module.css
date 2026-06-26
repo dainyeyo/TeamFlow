@@ -1,0 +1,140 @@
+.authContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.glowingOrb {
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  border-radius: 50%;
+  background: radial-gradient(circle, hsla(263, 90%, 64%, 0.15) 0%, transparent 70%);
+  top: -100px;
+  left: -100px;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.glowingOrbAccent {
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  background: radial-gradient(circle, hsla(190, 95%, 48%, 0.12) 0%, transparent 70%);
+  bottom: -150px;
+  right: -150px;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.authCard {
+  width: 100%;
+  max-width: 420px;
+  padding: 40px;
+  z-index: 10;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.authHeader {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.authHeader h2 {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.authHeader p {
+  color: hsl(var(--muted-foreground));
+  font-size: 14px;
+}
+
+.authForm {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.formGroup label {
+  font-size: 13px;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.formGroup input,
+.formGroup select {
+  background: hsla(224, 25%, 12%, 0.6);
+  border: 1px solid hsl(var(--border));
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  color: hsl(var(--foreground));
+  font-size: 15px;
+  transition: var(--transition-fast);
+  outline: none;
+}
+
+.formGroup input:focus,
+.formGroup select:focus {
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 2px hsla(263, 90%, 64%, 0.2);
+}
+
+.formGroup input::placeholder {
+  color: hsl(var(--muted) / 0.7);
+}
+
+.errorBox {
+  background: hsla(0, 84%, 60%, 0.1);
+  border: 1px solid hsl(var(--destructive) / 0.3);
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  color: hsl(var(--destructive));
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.authFooter {
+  text-align: center;
+  font-size: 14px;
+  color: hsl(var(--muted-foreground));
+  margin-top: 8px;
+}
+
+.authLink {
+  color: hsl(var(--primary));
+  font-weight: 600;
+  transition: var(--transition-fast);
+}
+
+.authLink:hover {
+  text-decoration: underline;
+  color: hsl(var(--accent));
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}

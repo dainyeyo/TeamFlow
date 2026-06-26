@@ -1,66 +1,318 @@
-import Image from "next/image";
+"use client";
+
+import { useSession, signOut } from "next-auth/react";
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import styles from "./page.module.css";
 
+interface Workspace {
+  id: string;
+  name: string;
+  inviteCode: string;
+  projects: Array<{ id: string; name: string }>;
+}
+
 export default function Home() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [loadingWorkspaces, setLoadingWorkspaces] = useState(false);
+  
+  // 폼 상태
+  const [newTeamName, setNewTeamName] = useState("");
+  const [inviteCodeInput, setInviteCodeInput] = useState("");
+  const [actionLoading, setActionLoading] = useState(false);
+  const [message, setMessage] = useState({ text: "", isError: false });
+
+  // 로그인 상태일 때 워크스페이스 조회
+  useEffect(() => {
+    if (status === "authenticated") {
+      fetchWorkspaces();
+    }
+  }, [status]);
+
+  const fetchWorkspaces = async () => {
+    setLoadingWorkspaces(true);
+    try {
+      const response = await fetch("/api/workspaces");
+      if (response.ok) {
+        const data = await response.json();
+        setWorkspaces(data);
+      }
+    } catch (err) {
+      console.error("워크스페이스 로드 실패:", err);
+    } finally {
+      setLoadingWorkspaces(false);
+    }
+  };
+
+  // 새로운 팀(워크스페이스) 생성
+  const handleCreateTeam = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTeamName.trim()) return;
+
+    setActionLoading(true);
+    setMessage({ text: "", isError: false });
+
+    try {
+      const response = await fetch("/api/workspaces", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "create", name: newTeamName }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "팀 생성 실패");
+
+      setMessage({ text: `🎉 팀 '${newTeamName}'이(가) 성공적으로 생성되었습니다! 초대 코드: ${data.workspace.inviteCode}`, isError: false });
+      setNewTeamName("");
+      fetchWorkspaces();
+    } catch (err: any) {
+      setMessage({ text: err.message, isError: true });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // 초대 코드로 팀 참여
+  const handleJoinTeam = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteCodeInput.trim()) return;
+
+    setActionLoading(true);
+    setMessage({ text: "", isError: false });
+
+    try {
+      const response = await fetch("/api/workspaces", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "join", inviteCode: inviteCodeInput }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "팀 가입 실패");
+
+      setMessage({ text: "🚀 성공적으로 팀에 합류하였습니다!", isError: false });
+      setInviteCodeInput("");
+      fetchWorkspaces();
+    } catch (err: any) {
+      setMessage({ text: err.message, isError: true });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  if (status === "loading") {
+    return (
+      <div className={styles.loadingScreen}>
+        <div className={styles.spinner} />
+        <p>세션 정보를 불러오는 중...</p>
+      </div>
+    );
+  }
+
+  // 1. 로그인 상태인 경우의 대시보드 화면
+  if (status === "authenticated") {
+    return (
+      <div className={styles.container}>
+        <div className={styles.glowingOrb} />
+        <div className={styles.glowingOrbAccent} />
+
+        <header className={styles.header}>
+          <div className={styles.logo}>
+            <span className="gradient-text">TeamFlow</span>
+          </div>
+          <div className={styles.userInfo}>
+            <span className={styles.userBadge}>
+              👤 {session.user?.name} ({session.user?.role === "Team Leader" ? "팀장" : session.user?.role === "Mentor" ? "멘토" : "팀원"})
+            </span>
+            <button onClick={() => signOut()} className={styles.btnSecondary}>
+              로그아웃
+            </button>
+          </div>
+        </header>
+
+        <main className={styles.main}>
+          <section className={styles.dashboardSection}>
+            <h1 className={`${styles.title} gradient-text`}>나의 협업 워크스페이스</h1>
+            <p className={styles.subtitle}>팀을 선택해 칸반 보드로 진입하거나 새로운 프로젝트 팀을 구축하세요.</p>
+
+            {message.text && (
+              <div className={`${styles.statusMessage} ${message.isError ? styles.errorMsg : styles.successMsg}`}>
+                {message.text}
+              </div>
+            )}
+
+            <div className={styles.workspaceGrid}>
+              {/* 워크스페이스 목록 */}
+              <div className={styles.workspaceListColumn}>
+                <h2>소속된 프로젝트 팀 ({workspaces.length})</h2>
+                {loadingWorkspaces ? (
+                  <p className={styles.infoText}>워크스페이스 불러오는 중...</p>
+                ) : workspaces.length === 0 ? (
+                  <div className={`${styles.emptyCard} glass-card`}>
+                    <p>현재 가입된 프로젝트 팀이 없습니다.</p>
+                    <p>오른쪽 메뉴에서 새로운 팀을 만들거나 초대 코드를 입력하여 참여해 보세요!</p>
+                  </div>
+                ) : (
+                  <div className={styles.cardContainer}>
+                    {workspaces.map((team) => (
+                      <div key={team.id} className={`${styles.teamCard} glass-card`}>
+                        <div className={styles.teamCardHeader}>
+                          <h3>{team.name}</h3>
+                          <span className={styles.codeBadge}>초대코드: {team.inviteCode}</span>
+                        </div>
+                        <p className={styles.teamProjectDesc}>
+                          {team.projects?.[0]?.name || "기본 프로젝트"}
+                        </p>
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                          <button
+                            onClick={() => router.push(`/board?workspaceId=${team.id}`)}
+                            className="btn-primary"
+                            style={{ flex: 1 }}
+                          >
+                            칸반 보드 ➔
+                          </button>
+                          {(session.user?.role === "Mentor" || session.user?.role === "Team Leader") && (
+                            <button
+                              onClick={() => router.push(`/board/mentor?workspaceId=${team.id}`)}
+                              className={styles.btnSecondary}
+                              style={{ padding: '8px 12px', fontSize: '13px' }}
+                            >
+                              🛡️ AI 진단 뷰
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* 생성/가입 사이드바 */}
+              <div className={styles.actionSidebar}>
+                <div className={`${styles.sidebarCard} glass-card`}>
+                  <h3>➕ 새로운 프로젝트 팀 생성</h3>
+                  <form onSubmit={handleCreateTeam} className={styles.sidebarForm}>
+                    <input
+                      type="text"
+                      placeholder="프로젝트 팀 이름 (예: AI 어시스턴트 A조)"
+                      value={newTeamName}
+                      onChange={(e) => setNewTeamName(e.target.value)}
+                      required
+                      disabled={actionLoading}
+                    />
+                    <button type="submit" className="btn-primary" disabled={actionLoading}>
+                      팀 생성 및 코드 발급
+                    </button>
+                  </form>
+                </div>
+
+                <div className={`${styles.sidebarCard} glass-card`}>
+                  <h3>🔑 초대 코드로 팀 참여</h3>
+                  <form onSubmit={handleJoinTeam} className={styles.sidebarForm}>
+                    <input
+                      type="text"
+                      placeholder="초대 코드 입력 (6자리 알파벳/숫자)"
+                      value={inviteCodeInput}
+                      onChange={(e) => setInviteCodeInput(e.target.value)}
+                      required
+                      disabled={actionLoading}
+                    />
+                    <button type="submit" className={styles.btnSecondary} disabled={actionLoading}>
+                      참여 코드로 가입
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </section>
+        </main>
+
+        <footer className={styles.footer}>
+          <p>© 2026 TeamFlow. AI 부트캠프 대학생 프로젝트 관리 시스템</p>
+        </footer>
+      </div>
+    );
+  }
+
+  // 2. 비로그인 상태인 경우의 랜딩 페이지 화면
   return (
-    <div className={styles.page}>
+    <div className={styles.container}>
+      <div className={styles.glowingOrb} />
+      <div className={styles.glowingOrbAccent} />
+
+      <header className={styles.header}>
+        <div className={styles.logo}>
+          <span className="gradient-text">TeamFlow</span>
+        </div>
+        <nav className={styles.nav}>
+          <a href="#features" className={styles.navLink}>주요 기능</a>
+          <Link href="/login" className={styles.navLink}>로그인</Link>
+        </nav>
+        <div>
+          <Link href="/register">
+            <button className="btn-primary">회원가입</button>
+          </Link>
+        </div>
+      </header>
+
       <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>To get started, edit the page.tsx file.</h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
+        <section className={styles.hero}>
+          <div className={styles.badge}>
+            <span>AI Bootcamp Edition 🚀</span>
+          </div>
+          <h1 className={`${styles.title} gradient-text`}>
+            전공자와 비전공자의<br />
+            협업 장벽을 허물다
+          </h1>
+          <p className={styles.subtitle}>
+            비전공자 기획자부터 AI 엔지니어까지, 모두의 작업 흐름을 한눈에 실시간으로 관리하는 AI 프로젝트 전용 칸반 보드 시스템
           </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+          <div className={styles.heroActions}>
+            <Link href="/login">
+              <button className="btn-primary">시작하기 (로그인)</button>
+            </Link>
+            <Link href="/demo">
+              <button className={styles.btnSecondary}>데모 보드 맛보기</button>
+            </Link>
+          </div>
+        </section>
+
+        <section id="features" className={styles.features}>
+          <h2 className={styles.sectionTitle}>부트캠프 팀을 위한 MVP 기능</h2>
+          <div className={styles.grid}>
+            <div className="glass-card">
+              <div className={styles.cardHeader}>
+                <div className={styles.cardIcon}>📊</div>
+                <h3>역할 필터링 칸반</h3>
+              </div>
+              <p>기획, 데이터, AI 모델링, 웹 개발 등 역할군별로 태스크를 필터링하여 복잡함을 줄이고 핵심에만 집중합니다.</p>
+            </div>
+
+            <div className="glass-card">
+              <div className={styles.cardHeader}>
+                <div className={styles.cardIcon}>⚙️</div>
+                <h3>하이브리드 상태 관리</h3>
+              </div>
+              <p>개발자는 GitHub PR 머지로 카드를 자동 완료하고, 비개발자는 웹 UI에서 마우스 드래그로 쉽고 빠르게 상태를 변경합니다.</p>
+            </div>
+
+            <div className="glass-card">
+              <div className={styles.cardHeader}>
+                <div className={styles.cardIcon}>🤖</div>
+                <h3>AI 태스크 분석 & 랩업</h3>
+              </div>
+              <p>AI가 업무 내용을 분석해 난이도와 적정 담당자를 분류하고, 매일 완료된 업무를 비기술직군도 알기 쉽게 일일 동향으로 정리합니다.</p>
+            </div>
+          </div>
+        </section>
       </main>
+
+      <footer className={styles.footer}>
+        <p>© 2026 TeamFlow. AI 부트캠프 대학생 프로젝트 관리 시스템</p>
+      </footer>
     </div>
   );
 }
