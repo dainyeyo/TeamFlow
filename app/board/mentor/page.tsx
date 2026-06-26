@@ -147,19 +147,21 @@ function MentorDashboardContent() {
           </div>
         </div>
 
-        <div className={`${styles.statCard} glass-card`}>
-          <span>전공자 태스크 (모델/개발)</span>
-          <h2>{stats.model + stats.dev}개</h2>
-          <p style={{ fontSize: '12px', color: 'hsl(var(--muted-foreground))' }}>
-            모델링 {stats.model}개 | 개발 코딩 {stats.dev}개
-          </p>
+        <div className={`${styles.statCard} glass-card`} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <span>분야별 태스크 분포</span>
+          <div style={{ marginTop: '8px', display: 'flex', flexWrap: 'wrap', gap: '8px 12px', fontSize: '12px', color: 'hsl(var(--muted-foreground))' }}>
+            <div>📋 기획: <strong style={{ color: 'hsl(var(--foreground))' }}>{stats.planning}</strong>개</div>
+            <div>📊 데이터: <strong style={{ color: 'hsl(var(--foreground))' }}>{stats.data}</strong>개</div>
+            <div>🤖 모델: <strong style={{ color: 'hsl(var(--foreground))' }}>{stats.model}</strong>개</div>
+            <div>💻 개발: <strong style={{ color: 'hsl(var(--foreground))' }}>{stats.dev}</strong>개</div>
+          </div>
         </div>
 
         <div className={`${styles.statCard} glass-card`}>
-          <span>비전공자 태스크 (기획/데이터)</span>
-          <h2>{stats.planning + stats.data}개</h2>
+          <span>실시간 검토 대기 (Peer Review)</span>
+          <h2>{stats.peerReview}개</h2>
           <p style={{ fontSize: '12px', color: 'hsl(var(--muted-foreground))' }}>
-            기획안 {stats.planning}개 | 데이터셋 {stats.data}개
+            팀원들의 피어 리뷰 및 피드백 대기 중인 작업
           </p>
         </div>
       </div>
