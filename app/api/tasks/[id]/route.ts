@@ -9,19 +9,40 @@ export async function PATCH(
   try {
     // Next.js 15+ 규격에 맞춰 params를 비동기식(Promise)으로 파싱
     const { id } = await params;
-    const { status } = await req.json();
+    const { status, title, description, type, difficulty, assigneeName, assigneeId } = await req.json();
 
-    if (!status) {
+    const updateData: any = {};
+    if (status !== undefined) updateData.status = status;
+    if (title !== undefined) updateData.title = title;
+    if (description !== undefined) updateData.description = description;
+    if (type !== undefined) updateData.type = type;
+    if (difficulty !== undefined) updateData.difficulty = difficulty;
+    if (assigneeName !== undefined) updateData.assigneeName = assigneeName;
+    
+    if (assigneeId !== undefined) {
+      updateData.assigneeId = assigneeId;
+    } else if (assigneeName !== undefined) {
+      if (assigneeName === "담당자 미지정" || assigneeName === "") {
+        updateData.assigneeId = null;
+      } else {
+        const userByName = await prisma.user.findFirst({ where: { name: assigneeName } });
+        if (userByName) {
+          updateData.assigneeId = userByName.id;
+        }
+      }
+    }
+
+    if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
-        { error: "변경할 태스크 상태(status)가 누락되었습니다." },
+        { error: "변경할 데이터가 누락되었습니다." },
         { status: 400 }
       );
     }
 
-    // Neon DB에서 태스크 상태 갱신
+    // Neon DB에서 태스크 갱신
     const updatedTask = await prisma.task.update({
       where: { id },
-      data: { status },
+      data: updateData,
       include: {
         project: true,
       },

@@ -65,7 +65,7 @@ export async function GET(req: Request) {
 // 2. 태스크 생성 및 Gemini AI 자동 판별 API (POST)
 export async function POST(req: Request) {
   try {
-    const { title, description, assignee, workspaceId } = await req.json();
+    const { title, description, assignee, workspaceId, type: customType, difficulty: customDifficulty } = await req.json();
 
     if (!title) {
       return NextResponse.json(
@@ -77,12 +77,16 @@ export async function POST(req: Request) {
     const project = await getOrCreateProjectForWorkspace(workspaceId);
     const apiKey = process.env.GEMINI_API_KEY;
 
-    let type = "기획";
-    let difficulty = "중";
+    // 기본값 지정
+    let type = (customType && customType !== "AI 자동 분석") ? customType : "기획";
+    let difficulty = (customDifficulty && customDifficulty !== "AI 자동 분석") ? customDifficulty : "중";
     let aiFeedback = "";
 
-    // Gemini API가 사용 가능한 경우 판별 처리 (내부 예외처리 강화)
-    if (apiKey) {
+    const isAutoType = !customType || customType === "AI 자동 분석";
+    const isAutoDifficulty = !customDifficulty || customDifficulty === "AI 자동 분석";
+
+    // 둘 다 수동 지정한 경우에는 Gemini API 호출을 건너뜀
+    if ((isAutoType || isAutoDifficulty) && apiKey) {
       try {
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel(
@@ -93,7 +97,7 @@ export async function POST(req: Request) {
         );
 
         const prompt = `
-당신은 전공자와 비전공자가 혼합된 AI 부트캠프 대학생 프로젝트의 협업 관리자입니다.
+당신은 기술과 비기술 부서가 협업하는 실무 부서의 프로젝트 매니지먼트 전문가이자 팀 어드바이저입니다.
 다음 태스크(할 일)의 제목과 상세 설명을 분석하여, 적절한 역할 분야, 기술적 난이도 및 팀 협업 가이드를 JSON 형식으로 반환해 주세요.
 
 [태스크 정보]
@@ -108,16 +112,16 @@ export async function POST(req: Request) {
    - "개발" (웹 프론트/백엔드 코딩, UI/UX 스타일링, 소켓 연동 등)
 
 2. difficulty (난이도): 다음 3개 중 반드시 하나를 선택해 주세요.
-   - "하" (비전공자 단독으로도 엑셀이나 문서를 통해 즉시 수행할 수 있는 작업)
-   - "중" (전공자의 약간의 서포트 또는 학습 가이드가 수반되면 협업 가능한 작업)
-   - "상" (고도의 전공 코딩 지식이나 모델 튜닝 실무가 필요한 전공자 전용 작업)
+   - "하" (비기술 직군 팀원이 단독으로도 즉시 수행할 수 있는 작업)
+   - "중" (약간의 기술 서포트나 가이드가 수반되면 협업 가능한 작업)
+   - "상" (고도의 시스템 아키텍처나 AI 모델 튜닝 등 전문 기술 지식이 필요한 작업)
 
 3. aiFeedback (협업 가이드):
-   - 해당 태스크가 왜 이 분야와 난이도로 지정되었는지 설명하고, 비전공자와 전공자가 역할을 어떻게 나누어 일할지 조언해 주세요.
-   - 단, 가독성을 위해 반드시 줄바꿈(\n)을 활용하여 다음 3가지 항목 형식으로만 보기 좋게 나누어 작성해 주세요. (이외의 인사말이나 사족은 생략)
+   - 해당 태스크가 왜 이 분야와 난이도로 지정되었는지 설명하고, 기술/비기술 파트가 역할을 어떻게 나누어 일할지 조언해 주세요.
+   - 단, 가독성을 위해 반드시 줄바꿈(\\n)을 활용하여 다음 3가지 항목 형식으로만 보기 좋게 나누어 작성해 주세요. (이외의 인사말이나 사족은 생략)
    💡 지정 이유: [이유를 1문장으로 요약]
-   🌱 비전공자 가이드: [비전공 팀원을 위한 구체적 가이드 1~2문장]
-   💻 전공자 가이드: [전공 팀원을 위한 구체적 가이드 1~2문장]
+   🌱 비기술 직군 가이드: [비기술 파트 팀원을 위한 구체적 가이드 1~2문장]
+   💻 기술 직군 가이드: [엔지니어링/기술 파트 팀원을 위한 구체적 가이드 1~2문장]
 
 [반환 형식]
 반드시 다음 스키마를 따르는 JSON 데이터 하나만 반환해야 하며, 다른 서술 텍스트는 포함하지 마십시오.
@@ -144,8 +148,13 @@ export async function POST(req: Request) {
           cleanText = cleanText.trim();
 
           const aiResponse = JSON.parse(cleanText);
-          type = aiResponse.type || type;
-          difficulty = aiResponse.difficulty || difficulty;
+          
+          if (isAutoType) {
+            type = aiResponse.type || type;
+          }
+          if (isAutoDifficulty) {
+            difficulty = aiResponse.difficulty || difficulty;
+          }
           aiFeedback = aiResponse.aiFeedback || "";
         } catch (parseErr) {
           console.error("AI Response JSON parsing failed:", parseErr);
@@ -156,7 +165,7 @@ export async function POST(req: Request) {
         aiFeedback = `💡 Gemini API 키 인증 실패 또는 사용 불가: API 키 형식(AIzaSy로 시작하는 키)을 확인해 주세요. (오류 메시지: ${aiErr.message || "Unknown"})`;
       }
     } else {
-      aiFeedback = "💡 Gemini API 키가 설정되지 않아 기본 분류로 대체 등록되었습니다.";
+      aiFeedback = "💡 사용자가 직접 수행 분야와 기술 난이도를 직접 지정하여 등록한 태스크입니다.";
     }
 
     let matchedUserId: string | null = null;

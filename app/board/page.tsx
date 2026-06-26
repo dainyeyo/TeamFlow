@@ -56,6 +56,8 @@ function BoardContent() {
   const [newTitle, setNewTitle] = useState("");
   const [newAssignee, setNewAssignee] = useState("");
   const [newDesc, setNewDesc] = useState("");
+  const [newType, setNewType] = useState<string>("AI 자동 분석");
+  const [newDifficulty, setNewDifficulty] = useState<string>("AI 자동 분석");
   const [creating, setCreating] = useState(false);
 
   // 댓글 관련 상태
@@ -218,6 +220,8 @@ function BoardContent() {
           description: newDesc,
           assignee: newAssignee || session?.user?.name || "담당자 미지정",
           workspaceId,
+          type: newType,
+          difficulty: newDifficulty,
         }),
       });
 
@@ -232,6 +236,8 @@ function BoardContent() {
       setNewTitle("");
       setNewDesc("");
       setNewAssignee(session?.user?.name || "");
+      setNewType("AI 자동 분석");
+      setNewDifficulty("AI 자동 분석");
     } catch (err) {
       console.error(err);
       alert("태스크 생성에 실패했습니다.");
@@ -424,6 +430,32 @@ function BoardContent() {
       alert(err.message || "프로젝트 목표 설정 도중 오류가 발생했습니다.");
     } finally {
       setSavingGoal(false);
+    }
+  };
+
+  const handleUpdateTaskMeta = async (taskId: string, field: "type" | "difficulty", value: string) => {
+    // 낙관적 UI 업데이트
+    setTasks(prev =>
+      prev.map(t => (t.id === taskId ? { ...t, [field]: value } : t))
+    );
+    setSelectedTask(prev => {
+      if (prev?.id === taskId) {
+        return { ...prev, [field]: value } as Task;
+      }
+      return prev;
+    });
+
+    try {
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [field]: value }),
+      });
+      if (!response.ok) throw new Error("업데이트 실패");
+    } catch (err) {
+      console.error(err);
+      alert("태스크 정보 업데이트 도중 오류가 발생했습니다.");
+      fetchTasksAndWorkspace();
     }
   };
 
@@ -769,6 +801,53 @@ function BoardContent() {
                 disabled={creating}
               />
             </div>
+            <div className={styles.formGroup}>
+              <label>수행 분야</label>
+              <select
+                value={newType}
+                onChange={e => setNewType(e.target.value)}
+                disabled={creating}
+                style={{
+                  background: 'hsla(224, 25%, 12%, 0.6)',
+                  border: '1px solid hsl(var(--border))',
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  color: 'hsl(var(--foreground))',
+                  fontSize: '13px',
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="AI 자동 분석">🤖 AI 자동 분석 (추천)</option>
+                <option value="기획">기획 (기획 / 디자인 / 도메인 기획)</option>
+                <option value="데이터">데이터 (데이터 전처리 / 수집)</option>
+                <option value="모델">모델 (AI 모델 설계 / 프롬프트 엔지니어링)</option>
+                <option value="개발">개발 (시스템 구현 / 인프라 구축)</option>
+              </select>
+            </div>
+            <div className={styles.formGroup}>
+              <label>기술 난이도</label>
+              <select
+                value={newDifficulty}
+                onChange={e => setNewDifficulty(e.target.value)}
+                disabled={creating}
+                style={{
+                  background: 'hsla(224, 25%, 12%, 0.6)',
+                  border: '1px solid hsl(var(--border))',
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  color: 'hsl(var(--foreground))',
+                  fontSize: '13px',
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="AI 자동 분석">🤖 AI 자동 분석 (추천)</option>
+                <option value="상">상 (High - 전문 엔지니어링)</option>
+                <option value="중">중 (Medium - 공동 작업)</option>
+                <option value="하">하 (Low - 단순 수행)</option>
+              </select>
+            </div>
             <button type="submit" className="btn-primary" disabled={creating}>
               {creating ? "Gemini가 분석 등록 중..." : "AI 자동 분석 및 등록"}
             </button>
@@ -780,9 +859,28 @@ function BoardContent() {
         <div className={styles.modalOverlay} onClick={() => setSelectedTask(null)}>
           <div className={`${styles.modalContent} glass-card`} onClick={e => e.stopPropagation()} style={{ maxWidth: '650px', maxHeight: '90vh', overflowY: 'auto' }}>
             <div className={styles.modalHeader}>
-              <span className={`${styles.typeBadge} ${styles[selectedTask.type]}`}>
-                {selectedTask.type}
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'hsl(var(--muted-foreground))' }}>수행 분야:</span>
+                <select
+                  value={selectedTask.type}
+                  onChange={e => handleUpdateTaskMeta(selectedTask.id, "type", e.target.value)}
+                  className={`${styles.typeBadge} ${styles[selectedTask.type]}`}
+                  style={{
+                    border: '1px solid hsl(var(--border) / 0.8)',
+                    padding: '3px 8px',
+                    borderRadius: '4px',
+                    fontSize: '11px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    outline: 'none'
+                  }}
+                >
+                  <option value="기획">기획</option>
+                  <option value="데이터">데이터</option>
+                  <option value="모델">모델</option>
+                  <option value="개발">개발</option>
+                </select>
+              </div>
               <button className={styles.closeBtn} onClick={() => setSelectedTask(null)}>
                 &times;
               </button>
@@ -790,7 +888,28 @@ function BoardContent() {
             <h2>{selectedTask.title}</h2>
             <div className={styles.modalMeta}>
               <p><strong>담당자:</strong> {selectedTask.assigneeName || selectedTask.assigneeId || "담당자 미지정"}</p>
-              <p><strong>난이도:</strong> {selectedTask.difficulty}</p>
+              <p style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <strong>기술 난이도:</strong>
+                <select
+                  value={selectedTask.difficulty}
+                  onChange={e => handleUpdateTaskMeta(selectedTask.id, "difficulty", e.target.value)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'hsl(var(--foreground))',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    borderBottom: '1px dashed hsl(var(--border))',
+                    padding: '0 4px'
+                  }}
+                >
+                  <option value="상" style={{ background: 'hsl(var(--background))' }}>상 (High)</option>
+                  <option value="중" style={{ background: 'hsl(var(--background))' }}>중 (Medium)</option>
+                  <option value="하" style={{ background: 'hsl(var(--background))' }}>하 (Low)</option>
+                </select>
+              </p>
               <p><strong>상태:</strong> {selectedTask.status}</p>
             </div>
             <div className={styles.modalBody}>
