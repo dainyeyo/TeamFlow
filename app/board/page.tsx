@@ -76,6 +76,11 @@ function BoardContent() {
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [savingGoal, setSavingGoal] = useState(false);
 
+  // 대규모 관리를 위한 다중 검색/필터 상태
+  const [searchQuery, setSearchQuery] = useState("");
+  const [assigneeFilter, setAssigneeFilter] = useState("전체");
+  const [difficultyFilter, setDifficultyFilter] = useState("전체");
+
   useEffect(() => {
     if (sessionStatus === "unauthenticated") {
       router.push("/login");
@@ -422,7 +427,26 @@ function BoardContent() {
     }
   };
 
-  const filteredTasks = tasks.filter(task => activeFilter === "전체" || task.type === activeFilter);
+  // 보드 내의 고유 담당자 목록 추출
+  const uniqueAssignees = Array.from(
+    new Set(tasks.map(t => t.assigneeName || t.assigneeId).filter(Boolean))
+  ) as string[];
+
+  const filteredTasks = tasks.filter(task => {
+    // 1. 역할군 필터
+    const matchesType = activeFilter === "전체" || task.type === activeFilter;
+    // 2. 담당자 필터
+    const nameOrId = task.assigneeName || task.assigneeId || "미지정";
+    const matchesAssignee = assigneeFilter === "전체" || nameOrId === assigneeFilter;
+    // 3. 난이도 필터
+    const matchesDifficulty = difficultyFilter === "전체" || task.difficulty === difficultyFilter;
+    // 4. 검색 쿼리 필터 (제목 + 설명)
+    const matchesQuery = 
+      task.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      (task.description || "").toLowerCase().includes(searchQuery.toLowerCase());
+
+    return matchesType && matchesAssignee && matchesDifficulty && matchesQuery;
+  });
 
   const columns: { title: Task["status"]; color: string }[] = [
     { title: "To-Do", color: "var(--muted)" },
@@ -459,20 +483,115 @@ function BoardContent() {
         </div>
       </div>
 
-      <header className={styles.header}>
-        <div className={styles.logoInfo}>
-          <span className="gradient-text styles_logo">{workspaceName}</span>
+      <header className={styles.header} style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'stretch' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className={styles.logoInfo}>
+            <span className="gradient-text styles_logo">{workspaceName}</span>
+          </div>
+          <div className={styles.filterBar} style={{ margin: 0 }}>
+            {(["전체", "기획", "데이터", "모델", "개발"] as const).map(filter => (
+              <button
+                key={filter}
+                onClick={() => setActiveFilter(filter)}
+                className={`${styles.filterBtn} ${activeFilter === filter ? styles.activeFilter : ""}`}
+              >
+                {filter}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className={styles.filterBar}>
-          {(["전체", "기획", "데이터", "모델", "개발"] as const).map(filter => (
-            <button
-              key={filter}
-              onClick={() => setActiveFilter(filter)}
-              className={`${styles.filterBtn} ${activeFilter === filter ? styles.activeFilter : ""}`}
+
+        {/* 대규모 관리를 위한 서브 필터바 */}
+        <div className={styles.subFilterBar} style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '12px 16px', borderRadius: '8px', border: '1px solid hsl(var(--border) / 0.5)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: '200px' }}>
+            <label style={{ fontSize: '11px', fontWeight: 'bold', color: 'hsl(var(--muted))' }}>🔍 태스크 검색</label>
+            <input
+              type="text"
+              placeholder="제목 또는 설명 검색..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              style={{
+                background: 'hsla(224, 25%, 12%, 0.6)',
+                border: '1px solid hsl(var(--border))',
+                padding: '6px 10px',
+                borderRadius: '6px',
+                color: 'hsl(var(--foreground))',
+                fontSize: '12px',
+                outline: 'none'
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '150px' }}>
+            <label style={{ fontSize: '11px', fontWeight: 'bold', color: 'hsl(var(--muted))' }}>👤 담당 팀원</label>
+            <select
+              value={assigneeFilter}
+              onChange={e => setAssigneeFilter(e.target.value)}
+              style={{
+                background: 'hsla(224, 25%, 12%, 0.6)',
+                border: '1px solid hsl(var(--border))',
+                padding: '6px 10px',
+                borderRadius: '6px',
+                color: 'hsl(var(--foreground))',
+                fontSize: '12px',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
             >
-              {filter}
+              <option value="전체">전체 담당자</option>
+              <option value="미지정">미지정</option>
+              {uniqueAssignees.map((name, i) => (
+                <option key={i} value={name}>{name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '120px' }}>
+            <label style={{ fontSize: '11px', fontWeight: 'bold', color: 'hsl(var(--muted))' }}>⚡ 난이도</label>
+            <select
+              value={difficultyFilter}
+              onChange={e => setDifficultyFilter(e.target.value)}
+              style={{
+                background: 'hsla(224, 25%, 12%, 0.6)',
+                border: '1px solid hsl(var(--border))',
+                padding: '6px 10px',
+                borderRadius: '6px',
+                color: 'hsl(var(--foreground))',
+                fontSize: '12px',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="전체">전체 난이도</option>
+              <option value="상">상</option>
+              <option value="중">중</option>
+              <option value="하">하</option>
+            </select>
+          </div>
+
+          {(searchQuery || assigneeFilter !== "전체" || difficultyFilter !== "전체" || activeFilter !== "전체") && (
+            <button
+              onClick={() => {
+                setSearchQuery("");
+                setAssigneeFilter("전체");
+                setDifficultyFilter("전체");
+                setActiveFilter("전체");
+              }}
+              style={{
+                marginTop: '16px',
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                padding: '6px 12px',
+                borderRadius: '6px',
+                color: 'hsl(var(--foreground))',
+                fontSize: '12px',
+                cursor: 'pointer',
+                transition: 'background 0.2s'
+              }}
+            >
+              필터 초기화
             </button>
-          ))}
+          )}
         </div>
       </header>
 
@@ -480,17 +599,22 @@ function BoardContent() {
         <div className={styles.kanbanColumns}>
           {columns.map(col => {
             const colTasks = filteredTasks.filter(t => t.status === col.title);
+            // In Progress, Peer Review 컬럼은 동시 진행 작업 수(WIP Limit)를 최대 4개로 제한합니다.
+            const isWipExceeded = (col.title === "In Progress" || col.title === "Peer Review") && colTasks.length > 4;
             return (
               <div
                 key={col.title}
-                className={styles.column}
+                className={`${styles.column} ${isWipExceeded ? styles.wipExceeded : ""}`}
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, col.title)}
               >
                 <div className={styles.columnHeader}>
                   <div className={styles.columnTitle}>
                     <span className={styles.statusDot} style={{ backgroundColor: `hsl(${col.color})` }} />
-                    <h4>{col.title}</h4>
+                    <h4>
+                      {col.title}
+                      {isWipExceeded && <span style={{ fontSize: '10px', color: 'hsl(var(--destructive))', marginLeft: '6px', fontWeight: 'bold' }}>⚠️ WIP 초과</span>}
+                    </h4>
                   </div>
                   <span className={styles.taskCount}>{colTasks.length}</span>
                 </div>

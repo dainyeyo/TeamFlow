@@ -111,7 +111,7 @@ function MentorDashboardContent() {
     return (
       <div className={styles.loadingBox}>
         <div className={styles.spinner} />
-        <p>멘토 전용 AI 팀 협업 진단서를 생성하는 중...</p>
+        <p>애자일 코치 전용 AI 팀 협업 진단서를 생성하는 중...</p>
       </div>
     );
   }
@@ -122,7 +122,7 @@ function MentorDashboardContent() {
     <div className={styles.dashboard}>
       <div className={styles.header}>
         <div>
-          <span style={{ fontSize: '13px', color: 'hsl(var(--accent))', fontWeight: '600', textTransform: 'uppercase' }}>Mentor Evaluation Mode 🛡️</span>
+          <span style={{ fontSize: '13px', color: 'hsl(var(--accent))', fontWeight: '600', textTransform: 'uppercase' }}>Agile Coaching Mode 🛡️</span>
           <h1 className="gradient-text">{workspaceName} - 협업 종합 진단</h1>
         </div>
         <button onClick={() => router.push(`/board?workspaceId=${workspaceId}`)} className={styles.backBtn}>
@@ -188,7 +188,7 @@ function MentorDashboardContent() {
           </div>
 
           <div style={{ marginTop: '12px' }}>
-            <strong style={{ fontSize: '14px', color: 'hsl(var(--primary))' }}>💡 권장 멘토 피드백 제안:</strong>
+            <strong style={{ fontSize: '14px', color: 'hsl(var(--primary))' }}>💡 권장 애자일 코칭 피드백 제안:</strong>
             <ul className={styles.suggestionList}>
               {suggestions.map((s, idx) => (
                 <li key={idx}>{s}</li>
@@ -198,12 +198,12 @@ function MentorDashboardContent() {
         </div>
 
         <div className={`${styles.card} glass-card`}>
-          <h3>📢 멘토 코칭 피드백 타임라인 ({mentorComments.length})</h3>
+          <h3>📢 애자일 코치 피드백 타임라인 ({mentorComments.length})</h3>
           
           <div className={styles.commentsTimeline}>
             {mentorComments.length === 0 ? (
               <p style={{ fontSize: '13px', color: 'hsl(var(--muted))', textAlign: 'center', padding: '48px 0' }}>
-                아직 칸반 보드에 작성된 멘토 피드백 코멘트가 없습니다.<br />
+                아직 칸반 보드에 작성된 애자일 코치 피드백 코멘트가 없습니다.<br />
                 칸반 모달창에서 댓글을 남기면 여기에 모아져 타임라인으로 표시됩니다.
               </p>
             ) : (
@@ -211,7 +211,7 @@ function MentorDashboardContent() {
                 <div key={c.id} className={`${styles.commentItem} glass-card`} style={{ border: '1px solid hsl(var(--border) / 0.7)' }}>
                   <div className={styles.commentMeta}>
                     <span>
-                      <strong>{c.author.name} 멘토</strong> ({c.author.specialty})
+                      <strong>{c.author.name} 코치</strong> ({c.author.specialty})
                     </span>
                     <span>
                       {new Date(c.createdAt).toLocaleDateString()}
