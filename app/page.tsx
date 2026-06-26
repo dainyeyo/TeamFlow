@@ -125,7 +125,7 @@ export default function Home() {
           </div>
           <div className={styles.userInfo}>
             <span className={styles.userBadge}>
-              👤 {session.user?.name} ({session.user?.role === "Team Leader" ? "PM" : session.user?.role === "Mentor" ? "애자일 코치" : "팀원"})
+              👤 {session.user?.name} ({session.user?.role === "Team Leader" ? "PM" : session.user?.role === "Mentor" ? "총괄 매니저" : "팀원"})
             </span>
             <button onClick={() => signOut()} className={styles.btnSecondary}>
               로그아웃
@@ -180,7 +180,7 @@ export default function Home() {
                               className={styles.btnSecondary}
                               style={{ padding: '8px 12px', fontSize: '13px' }}
                             >
-                              🛡️ AI 코칭 뷰
+                              🛡️ AI 총괄 진단 뷰
                             </button>
                           )}
                         </div>

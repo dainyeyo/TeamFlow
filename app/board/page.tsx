@@ -840,7 +840,7 @@ function BoardContent() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <strong style={{ fontSize: '13px' }}>{comment.author.name}</strong>
                           <span style={{ fontSize: '10px', background: 'hsl(var(--primary) / 0.1)', color: 'hsl(var(--primary))', padding: '2px 6px', borderRadius: '4px', border: '1px solid hsl(var(--primary) / 0.2)' }}>
-                            {comment.author.role === "Mentor" ? "애자일 코치" : (comment.author.role === "Team Leader" ? "PM" : comment.author.specialty || "팀원")}
+                            {comment.author.role === "Mentor" ? "총괄 매니저" : (comment.author.role === "Team Leader" ? "PM" : comment.author.specialty || "팀원")}
                           </span>
                         </div>
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
