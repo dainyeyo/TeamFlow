@@ -71,6 +71,11 @@ function BoardContent() {
   const [showDiscordModal, setShowDiscordModal] = useState(false);
   const [savingWebhook, setSavingWebhook] = useState(false);
 
+  // 프로젝트 브리핑 메모 관련 상태
+  const [projectGoal, setProjectGoal] = useState("");
+  const [isEditingGoal, setIsEditingGoal] = useState(false);
+  const [savingGoal, setSavingGoal] = useState(false);
+
   useEffect(() => {
     if (sessionStatus === "unauthenticated") {
       router.push("/login");
@@ -103,6 +108,13 @@ function BoardContent() {
         } else {
           setWorkspaceName("알 수 없는 워크스페이스");
         }
+      }
+
+      // 프로젝트 브리핑 목표 데이터 패칭
+      const pjResponse = await fetch(`/api/workspaces/${workspaceId}/project`);
+      if (pjResponse.ok) {
+        const pjData = await pjResponse.json();
+        setProjectGoal(pjData.description || "");
       }
     } catch (err) {
       console.error(err);
@@ -384,6 +396,32 @@ function BoardContent() {
     }
   };
 
+  const handleSaveProjectGoal = async () => {
+    if (!workspaceId) return;
+    setSavingGoal(true);
+    try {
+      const response = await fetch(`/api/workspaces/${workspaceId}/project`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ description: projectGoal }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || "목표 저장 실패");
+      }
+
+      setIsEditingGoal(false);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "프로젝트 목표 설정 도중 오류가 발생했습니다.");
+    } finally {
+      setSavingGoal(false);
+    }
+  };
+
   const filteredTasks = tasks.filter(task => activeFilter === "전체" || task.type === activeFilter);
 
   const columns: { title: Task["status"]; color: string }[] = [
@@ -503,6 +541,76 @@ function BoardContent() {
         </div>
 
         <div className={`${styles.sidebar} glass-card`}>
+          {/* 📌 프로젝트 목표 및 진행 브리핑 메모장 */}
+          <div style={{ marginBottom: '24px', borderBottom: '1px solid hsl(var(--border) / 0.5)', paddingBottom: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <h3 style={{ fontSize: '15px', fontWeight: 'bold', color: 'hsl(var(--accent))', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
+                📌 프로젝트 목표 & 진행 브리핑
+              </h3>
+              {!isEditingGoal && (
+                <button
+                  onClick={() => setIsEditingGoal(true)}
+                  style={{ background: 'none', border: 'none', color: 'hsl(var(--muted))', cursor: 'pointer', fontSize: '13px' }}
+                  title="브리핑 수정"
+                >
+                  ✏️ 수정
+                </button>
+              )}
+            </div>
+
+            {isEditingGoal ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <textarea
+                  value={projectGoal}
+                  onChange={e => setProjectGoal(e.target.value)}
+                  placeholder="프로젝트 주제, 주요 일정, 마일스톤 등을 자유롭게 적어 공유하세요."
+                  rows={4}
+                  style={{
+                    width: '100%',
+                    background: 'hsla(224, 25%, 12%, 0.6)',
+                    border: '1px solid hsl(var(--border))',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    color: 'hsl(var(--foreground))',
+                    fontSize: '13px',
+                    outline: 'none',
+                    resize: 'vertical'
+                  }}
+                />
+                <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                  <button
+                    onClick={() => setIsEditingGoal(false)}
+                    className="btn-secondary"
+                    style={{ padding: '4px 10px', fontSize: '12px', cursor: 'pointer' }}
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={handleSaveProjectGoal}
+                    className="btn-primary"
+                    disabled={savingGoal}
+                    style={{ padding: '4px 10px', fontSize: '12px', cursor: 'pointer' }}
+                  >
+                    {savingGoal ? "저장 중..." : "저장"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div style={{
+                background: 'hsla(224, 25%, 12%, 0.4)',
+                border: '1px solid hsl(var(--border) / 0.3)',
+                padding: '12px 14px',
+                borderRadius: '8px',
+                fontSize: '13px',
+                color: 'hsl(var(--muted-foreground))',
+                whiteSpace: 'pre-wrap',
+                lineHeight: '1.6'
+              }}>
+                {projectGoal.trim() || "💡 등록된 프로젝트의 큰 목표나 일정이 없습니다. 우측 상단 수정 단추를 눌러 첫 브리핑을 작성해 보세요!"}
+              </div>
+            )}
+          </div>
+
           <h3>➕ AI 자동 태깅 태스크 추가</h3>
           <p className={styles.sidebarDesc}>하고 싶은 일의 내용만 적어보세요. AI가 기술적 난이도와 적정 담당 분야를 자동 분석하여 보드에 등록해 줍니다.</p>
           <form onSubmit={handleAddTask} className={styles.taskForm}>
